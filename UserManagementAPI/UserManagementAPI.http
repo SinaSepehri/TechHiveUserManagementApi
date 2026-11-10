@@ -1,0 +1,123 @@
+@UserManagementAPI_HostAddress = http://localhost:5070
+# Development token from appsettings.Development.json. That file is git-ignored (see the repo .gitignore),
+# so on a fresh clone set a token first, e.g.:
+#   dotnet user-secrets set "Authentication:Clients:0:Name" "local-dev"
+#   dotnet user-secrets set "Authentication:Clients:0:Token" "dev-only-token-change-me-0123456789"
+@token = dev-only-token-change-me-0123456789
+
+### ---------- Happy path ----------
+
+### Get users (paged; total count in the X-Total-Count header)
+GET {{UserManagementAPI_HostAddress}}/api/users?page=1&pageSize=50
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Create a user -> 201 Created (fields are trimmed, email lower-cased)
+POST {{UserManagementAPI_HostAddress}}/api/users
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "firstName": "Avery",
+  "lastName": "Morgan",
+  "email": "avery.morgan@techhive.example",
+  "department": "Engineering"
+}
+
+### Get a user by ID -> 200
+GET {{UserManagementAPI_HostAddress}}/api/users/1
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Update a user -> 200
+PUT {{UserManagementAPI_HostAddress}}/api/users/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "firstName": "Avery",
+  "lastName": "Morgan",
+  "email": "avery.morgan@techhive.example",
+  "department": "Platform Engineering"
+}
+
+### Delete a user -> 204
+DELETE {{UserManagementAPI_HostAddress}}/api/users/1
+Authorization: Bearer {{token}}
+
+### ---------- Edge cases ----------
+
+### Invalid input -> 400 with an error per field
+POST {{UserManagementAPI_HostAddress}}/api/users
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "firstName": "",
+  "lastName": "M0rgan",
+  "email": "a@b",
+  "department": "X"
+}
+
+### Malformed JSON -> 400 (not 500)
+POST {{UserManagementAPI_HostAddress}}/api/users
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ oops
+
+### Duplicate email (case-insensitive) -> 409 Conflict (run "Create a user" first)
+POST {{UserManagementAPI_HostAddress}}/api/users
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "firstName": "Blake",
+  "lastName": "Lee",
+  "email": "AVERY.MORGAN@techhive.example",
+  "department": "Sales"
+}
+
+### Non-existent user -> 404 ProblemDetails
+GET {{UserManagementAPI_HostAddress}}/api/users/999
+Authorization: Bearer {{token}}
+
+### Non-numeric ID -> 404 ProblemDetails
+GET {{UserManagementAPI_HostAddress}}/api/users/abc
+Authorization: Bearer {{token}}
+
+### Update a non-existent user -> 404
+PUT {{UserManagementAPI_HostAddress}}/api/users/999
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "firstName": "Avery",
+  "lastName": "Morgan",
+  "email": "someone@techhive.example",
+  "department": "Engineering"
+}
+
+### Delete a non-existent user -> 404
+DELETE {{UserManagementAPI_HostAddress}}/api/users/999
+Authorization: Bearer {{token}}
+
+### Invalid paging -> 400
+GET {{UserManagementAPI_HostAddress}}/api/users?page=0&pageSize=500
+Authorization: Bearer {{token}}
+
+### ---------- Authentication / middleware ----------
+
+### No token -> 401 Unauthorized
+GET {{UserManagementAPI_HostAddress}}/api/users
+
+### Invalid token -> 401 Unauthorized (WWW-Authenticate: Bearer error="invalid_token")
+GET {{UserManagementAPI_HostAddress}}/api/users
+Authorization: Bearer not-a-real-token-0123456789
+
+### Wrong scheme -> 401 Unauthorized
+GET {{UserManagementAPI_HostAddress}}/api/users
+Authorization: Basic dXNlcjpwYXNz
+
+### OpenAPI document is allowed without a token in Development
+GET {{UserManagementAPI_HostAddress}}/openapi/v1.json
