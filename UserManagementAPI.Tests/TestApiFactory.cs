@@ -31,6 +31,8 @@ public sealed class TestApiFactory : WebApplicationFactory<Program>
     {
         builder.UseEnvironment(Environment);
         builder.UseSetting("FileLogging:Path", Path.Combine(LogDirectory, "usermanagement-.log"));
+        // Set here rather than relying on appsettings.Development.json, which is git-ignored.
+        builder.UseSetting("Authentication:AnonymousPaths:0", "/openapi");
 
         if (configureClients)
         {
